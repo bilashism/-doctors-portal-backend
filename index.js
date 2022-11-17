@@ -62,13 +62,42 @@ const run = async () => {
 
     const appointmentOptionsCollection =
       database.collection("appointmentOptions");
+    const bookingsCollection = database.collection("bookings");
 
+    // get data based on the selected date
     app.get("/appointmentOptions", async (req, res) => {
+      const date = req.query.date;
       const query = {};
       const options = {};
-      const result = await appointmentOptionsCollection
+      const appointmentOptions = await appointmentOptionsCollection
         .find(query, options)
         .toArray();
+      const bookingQuery = { userSelectedDate: date };
+
+      const alreadyBooked = await bookingsCollection
+        .find(bookingQuery)
+        .toArray();
+
+      // filter booked slots
+      appointmentOptions.forEach(option => {
+        const bookedOption = alreadyBooked.filter(
+          booked => booked.treatmentName === option.name
+        );
+        const bookedSlots = bookedOption.map(opt => opt.selectedSlot);
+
+        const remainingSlots = option.slots.filter(
+          slot => !bookedSlots.includes(slot)
+        );
+        option.slots = remainingSlots;
+      });
+
+      res.send(appointmentOptions);
+    });
+
+    // create a booking
+    app.post("/bookings", async (req, res) => {
+      const booking = req.body;
+      const result = await bookingsCollection.insertOne(booking);
       res.send(result);
     });
   } finally {
