@@ -63,6 +63,7 @@ const run = async () => {
     const appointmentOptionsCollection =
       database.collection("appointmentOptions");
     const bookingsCollection = database.collection("bookings");
+    const usersCollection = database.collection("users");
 
     // get data based on the selected date
     app.get("/appointmentOptions", async (req, res) => {
@@ -120,6 +121,13 @@ const run = async () => {
       const query = { email };
       const options = {};
       const result = await bookingsCollection.find(query, options).toArray();
+      res.send(result);
+    });
+
+    // create an user
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const result = await usersCollection.insertOne(user);
       res.send(result);
     });
   } finally {
