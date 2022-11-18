@@ -11,20 +11,20 @@ const app = express();
 // middleware
 app.use(cors());
 app.use(express.json());
-// const verifyToken = (req, res, next) => {
-//   const authHeader = req.headers.authorization;
-//   if (!authHeader) {
-//     return res.status(401).send({ message: "Unauthorized access" });
-//   }
-//   const token = authHeader.split(" ").pop();
-//   jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
-//     if (err) {
-//       return res.status(403).send({ message: "Forbidden access" });
-//     }
-//     req.decoded = decoded;
-//     next();
-//   });
-// };
+const verifyToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+  const token = authHeader.split(" ").pop();
+  jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+    if (err) {
+      return res.status(403).send({ message: "Forbidden access" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+};
 
 // localhost server setup
 const server = app.listen(port, "localhost", () => {
@@ -116,8 +116,14 @@ const run = async () => {
     });
 
     // get all bookings of an user
-    app.get("/bookings", async (req, res) => {
+    app.get("/bookings", verifyToken, async (req, res) => {
       const email = req?.query?.email;
+      const decodedEmail = req?.decoded?.email;
+
+      if (decodedEmail !== email) {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
+
       const query = { email };
       const options = {};
       const result = await bookingsCollection.find(query, options).toArray();
@@ -129,6 +135,20 @@ const run = async () => {
       const user = req.body;
       const result = await usersCollection.insertOne(user);
       res.send(result);
+    });
+
+    // issue access token
+    app.get("/jwt", async (req, res) => {
+      const email = req?.query?.email;
+      const user = await usersCollection.findOne({ email });
+
+      if (user) {
+        const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, {
+          expiresIn: "10h"
+        });
+        return res.send({ accessToken: token });
+      }
+      res.status(401).send({ accessToken: "" });
     });
   } finally {
     // Ensures that the client will close when you finish/error
