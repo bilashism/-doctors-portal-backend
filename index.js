@@ -113,6 +113,15 @@ const run = async () => {
       const result = await bookingsCollection.insertOne(booking);
       res.send(result);
     });
+
+    // get all bookings of an user
+    app.get("/bookings", async (req, res) => {
+      const email = req?.query?.email;
+      const query = { email };
+      const options = {};
+      const result = await bookingsCollection.find(query, options).toArray();
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
