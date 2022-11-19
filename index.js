@@ -137,6 +137,14 @@ const run = async () => {
       res.send(result);
     });
 
+    // get all users
+    app.get("/users", async (req, res) => {
+      const query = {};
+      const options = {};
+      const result = await usersCollection.find(query, options).toArray();
+      res.send(result);
+    });
+
     // issue access token
     app.get("/jwt", async (req, res) => {
       const email = req?.query?.email;
