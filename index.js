@@ -130,6 +130,17 @@ const run = async () => {
       res.send(result);
     });
 
+    // get only specialties
+    app.get("/appointmentSpecialty", async (req, res) => {
+      const query = {};
+      const options = {};
+      const result = await appointmentOptionsCollection
+        .find(query, options)
+        .project({ name: 1 })
+        .toArray();
+      res.send(result);
+    });
+
     // check admin status
     app.get("/users/admin/:email", async (req, res) => {
       const email = req.params.email;
