@@ -130,11 +130,19 @@ const run = async () => {
       res.send(result);
     });
 
+    // check admin status
+    app.get("/users/admin/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const result = await usersCollection.findOne(query);
+      res.send({ isAdmin: result?.role === "admin" });
+    });
+
     // create an admin
     app.put("/users/admin/:id", verifyToken, async (req, res) => {
       const decodedEmail = req.decoded.email;
       const query = { email: decodedEmail };
-      const user = await usersCollection.findOne({ query });
+      const user = await usersCollection.findOne(query);
       if (user?.role !== "admin") {
         return res.status(403).send({ message: "Forbidden access" });
       }
