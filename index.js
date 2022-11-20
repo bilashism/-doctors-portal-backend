@@ -163,6 +163,16 @@ const run = async () => {
       res.send(result);
     });
 
+    // get a booking of an user
+    app.get("/bookings/:id", verifyToken, async (req, res) => {
+      const id = req?.params?.id;
+
+      const query = { _id: ObjectId(id) };
+      const options = {};
+      const result = await bookingsCollection.findOne(query, options);
+      res.send(result);
+    });
+
     // get only specialties
     app.get("/appointmentSpecialty", async (req, res) => {
       const query = {};
