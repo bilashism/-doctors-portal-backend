@@ -60,10 +60,43 @@ const run = async () => {
     //   res.send({ token });
     // });
 
+    const verifyAdmin = async (req, res, next) => {
+      const decodedEmail = req.decoded.email;
+      const query = { email: decodedEmail };
+      const user = await usersCollection.findOne(query);
+      if (user?.role !== "admin") {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
+      next();
+    };
+
     const appointmentOptionsCollection =
       database.collection("appointmentOptions");
     const bookingsCollection = database.collection("bookings");
     const usersCollection = database.collection("users");
+    const doctorsCollection = database.collection("doctors");
+
+    // add a doctor
+    app.post("/doctors", verifyToken, verifyAdmin, async (req, res) => {
+      const doctor = req.body;
+      const result = await doctorsCollection.insertOne(doctor);
+      res.send(result);
+    });
+
+    // get all doctors
+    app.get("/doctors", verifyToken, verifyAdmin, async (req, res) => {
+      const query = {};
+      const result = await doctorsCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // delete a doctor
+    app.delete("/doctors/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const doctorId = req.params.id;
+      const query = { _id: ObjectId(doctorId) };
+      const result = await doctorsCollection.deleteOne(query);
+      res.send(result);
+    });
 
     // get data based on the selected date
     app.get("/appointmentOptions", async (req, res) => {
@@ -150,14 +183,7 @@ const run = async () => {
     });
 
     // create an admin
-    app.put("/users/admin/:id", verifyToken, async (req, res) => {
-      const decodedEmail = req.decoded.email;
-      const query = { email: decodedEmail };
-      const user = await usersCollection.findOne(query);
-      if (user?.role !== "admin") {
-        return res.status(403).send({ message: "Forbidden access" });
-      }
-
+    app.put("/users/admin/:id", verifyToken, verifyAdmin, async (req, res) => {
       const userId = req.params.id;
       const filter = { _id: ObjectId(userId) };
       const options = { upsert: true };
