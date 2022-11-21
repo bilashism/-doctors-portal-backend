@@ -1,10 +1,11 @@
 const dotenv = require("dotenv");
+dotenv.config();
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
-dotenv.config();
 const port = process.env.PORT || 5000;
 const app = express();
 
@@ -51,6 +52,12 @@ const client = new MongoClient(uri, {
 const run = async () => {
   try {
     const database = client.db("doctorsPortal");
+    const appointmentOptionsCollection =
+      database.collection("appointmentOptions");
+    const bookingsCollection = database.collection("bookings");
+    const usersCollection = database.collection("users");
+    const doctorsCollection = database.collection("doctors");
+    const paymentsCollection = database.collection("payments");
 
     // app.post("/jwt", async (req, res) => {
     //   const userEmail = req.body;
@@ -70,11 +77,46 @@ const run = async () => {
       next();
     };
 
-    const appointmentOptionsCollection =
-      database.collection("appointmentOptions");
-    const bookingsCollection = database.collection("bookings");
-    const usersCollection = database.collection("users");
-    const doctorsCollection = database.collection("doctors");
+    // stripe payment
+    app.post("/create-payment-intent", async (req, res) => {
+      const booking = req.body;
+      const price = booking.price;
+      const amount = price * 100;
+
+      // Create a PaymentIntent with the order amount and currency
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"]
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      });
+    });
+
+    // store payments
+    app.post("/payments", verifyToken, async (req, res) => {
+      const payment = req.body;
+      const result = await paymentsCollection.insertOne(payment);
+
+      const bookingId = payment.bookingId;
+      const transactionId = payment.transactionId;
+      const filter = { _id: ObjectId(bookingId) };
+      const options = { upsert: true };
+      const updatedBookingInfo = {
+        $set: {
+          paid: true,
+          transactionId
+        }
+      };
+      const updatedBooking = await bookingsCollection.updateOne(
+        filter,
+        updatedBookingInfo,
+        options
+      );
+      res.send(result);
+    });
 
     // add a doctor
     app.post("/doctors", verifyToken, verifyAdmin, async (req, res) => {
